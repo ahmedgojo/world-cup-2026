@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+        .team-pool {
+            padding: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: #111;
+        }
+        .team-badge {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .team-flag-img {
+            width: 28px;
+            height: 20px;
+            background: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="team-pool" id="pool"></div>
+    </div>
+    <script>
+        const codes = ["ALG","ARG","AUS","AUT","BEL","BIH","BRA","CAN","CPV","COL","CRO","CUW","CZE","COD","ECU","EGY","ENG","FRA","GER","GHA","HAI","IRN","IRQ","CIV","JPN","JOR","MEX","MOR","NED","NZL","NOR","PAN","PAR","POR","QAT","KSA","SCO","SEN","RSA","KOR","SPA","SWE","SUI","TUN","TUR","URU","USA","UZB"];
+        const pool = document.getElementById('pool');
+        codes.forEach(c => {
+            const b = document.createElement('div');
+            b.className = 'team-badge';
+            b.innerHTML = `<div class="team-flag-img"></div>${c}`;
+            pool.appendChild(b);
+        });
+    </script>
+</body>
+</html>
