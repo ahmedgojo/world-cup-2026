@@ -18,8 +18,14 @@ const roundsInfo = [
     { id: 'R16', name: 'HUITIÈMES DE FINALE', matches: ['m89', 'm90', 'm91', 'm92', 'm93', 'm94', 'm95', 'm96'] },
     { id: 'QF', name: 'QUARTS DE FINALE', matches: ['m97', 'm98', 'm99', 'm100'] },
     { id: 'SF', name: 'DEMI-FINALES', matches: ['m101', 'm102'] },
+    { id: 'TP', name: 'MATCH POUR LA 3ÈME PLACE', matches: ['m103'] },
     { id: 'F', name: 'FINALE', matches: ['m104'] }
 ];
+
+const loserNextMatches = {
+    m101: { round: 'TP', id: 'm103', slot: 't1' },
+    m102: { round: 'TP', id: 'm103', slot: 't2' }
+};
 
 const nextMatches = {
     m73: { round: 'R16', id: 'm89', slot: 't1' }, m74: { round: 'R16', id: 'm89', slot: 't2' },
@@ -60,6 +66,21 @@ async function init() {
         initAllocationDragAndDrop();
     }
 
+    // DIMMED STATE UI CUE
+    if (INITIAL_LOAD_STATE || currentPredictionId) {
+        const mainContainer = document.querySelector('main');
+        if (mainContainer) {
+            mainContainer.classList.add('dimmed-state');
+            const removeDimmed = () => {
+                mainContainer.classList.remove('dimmed-state');
+                document.removeEventListener('mousedown', removeDimmed);
+                document.removeEventListener('dragstart', removeDimmed);
+            };
+            document.addEventListener('mousedown', removeDimmed);
+            document.addEventListener('dragstart', removeDimmed);
+        }
+    }
+
     // Initialize Phase Navigation
     const backBtn = document.getElementById('back-to-draw-btn');
     if (backBtn) {
@@ -77,7 +98,13 @@ async function init() {
 async function loadTeams() {
     try {
         const response = await fetch('api.php?action=get_teams');
-        teams = await response.json();
+        const data = await response.json();
+        // Normalize team objects
+        teams = data.map(t => ({
+            ...t,
+            flag: t.flag_code || t.flag,
+            flag_code: t.flag_code || t.flag
+        }));
     } catch (e) {
         console.error("Failed to load teams", e);
     }
@@ -147,6 +174,7 @@ function handleAllocationDrop(e) {
         assignTeamToGroup(slot, draggedTeam);
         draggedTeam = null;
         renderPool();
+        saveState(true); // Auto-save partial Phase 0
     }
 }
 
@@ -161,6 +189,7 @@ function handleSlotClick() {
         this.innerHTML = '';
         delete this.dataset.teamId;
         renderPool();
+        saveState(true); // Auto-save partial Phase 0
     }
 }
 
@@ -171,7 +200,8 @@ function assignTeamToGroup(slot, team) {
     groupsData[group].push({
         id: team.id,
         name: team.name,
-        flag: team.flag_code,
+        flag: team.flag || team.flag_code,
+        flag_code: team.flag_code || team.flag,
         code: team.code
     });
     
@@ -389,10 +419,20 @@ function generateKnockouts() {
 
     if (!isBracketInitialized || !bracket.R32?.m73) {
         roundsInfo.forEach(r => {
-            bracket[r.id] = {};
-            r.matches.forEach(m => bracket[r.id][m] = { t1: null, t2: null, winner: null });
+            if (!bracket[r.id]) bracket[r.id] = {};
+            r.matches.forEach(m => {
+                if (!bracket[r.id][m]) bracket[r.id][m] = { t1: null, t2: null, winner: null };
+            });
         });
         isBracketInitialized = true;
+    } else {
+        // Ensure even if initialized, new rounds like TP/F are present
+        roundsInfo.forEach(r => {
+            if (!bracket[r.id]) bracket[r.id] = {};
+            r.matches.forEach(m => {
+                if (!bracket[r.id][m]) bracket[r.id][m] = { t1: null, t2: null, winner: null };
+            });
+        });
     }
 
     const base = {
@@ -451,13 +491,13 @@ function renderKnockouts() {
         container.appendChild(section);
     });
     
-    if (bracket.F.m104?.winner) {
+    if (bracket.F?.m104?.winner && bracket.TP?.m103?.winner) {
         const win = bracket.F.m104.winner;
         const div = document.createElement('div');
         div.className = 'round-section';
         div.innerHTML = `<h3 class="heading-bold" style="color:var(--primary);text-align:center;">CHAMPION DU MONDE 2026</h3>
             <div class="card final-winner-card">
-                <img src="https://flagcdn.com/w80/${win.flag}.png" alt="${win.name}" class="team-flag-img">
+                <img src="https://flagcdn.com/w80/${win.flag || win.flag_code}.png" alt="${win.name}" class="team-flag-img">
                 <div class="team-name">${win.name}</div>
             </div>`;
         container.appendChild(div);
@@ -471,22 +511,34 @@ function renderKnockouts() {
 function setWinner(round, mId, idx) {
     const m = bracket[round][mId];
     const win = idx === 1 ? m.t1 : m.t2;
+    const lose = idx === 1 ? m.t2 : m.t1;
     if (!win) return;
     
     if (m.winner && m.winner.id !== win.id) clearDownstream(mId, m.winner.id);
     m.winner = win;
-    advance(mId, win);
+    advance(mId, win, lose);
     renderKnockouts();
     saveState(true); // Auto-save
 }
 
-function advance(srcId, team) {
+function advance(srcId, team, loser) {
     const n = nextMatches[srcId];
     if (n) {
         const nm = bracket[n.round][n.id];
         nm[n.slot] = team;
         if (nm.winner && nm.winner.id !== nm.t1?.id && nm.winner.id !== nm.t2?.id) {
             clearDownstream(n.id, nm.winner.id);
+            nm.winner = null;
+        }
+    }
+
+    // LOSER ADVANCEMENT (3rd Place Match)
+    const ln = loserNextMatches[srcId];
+    if (ln && loser) {
+        const nm = bracket[ln.round][ln.id];
+        nm[ln.slot] = loser;
+        if (nm.winner && nm.winner.id !== nm.t1?.id && nm.winner.id !== nm.t2?.id) {
+            clearDownstream(ln.id, nm.winner.id);
             nm.winner = null;
         }
     }
@@ -616,7 +668,7 @@ function loadStateData(state) {
     groupsData = state.groupsData || {};
     groupsState = state.groupsState || {};
     selectedThirds = state.selectedThirds || [];
-    bracket = state.bracket || { R32: {}, R16: {}, QF: {}, SF: {}, F: {} };
+    bracket = state.bracket || { R32: {}, R16: {}, QF: {}, SF: {}, TP: {}, F: {} };
     isBracketInitialized = !!state.bracket;
     
     // Check if empty (Phase 0)
@@ -627,6 +679,7 @@ function loadStateData(state) {
         document.getElementById('prediction-wrapper').classList.add('hidden');
         document.getElementById('phase0').classList.remove('hidden');
         renderPool();
+        renderPhase0Slots();
         initAllocationDragAndDrop();
     } else {
         document.getElementById('phase0').classList.add('hidden');
@@ -648,7 +701,7 @@ document.getElementById('start-new-btn')?.addEventListener('click', async () => 
         groupsData = {};
         groupsState = {};
         selectedThirds = [];
-        bracket = { R32: {}, R16: {}, QF: {}, SF: {}, F: {} };
+        bracket = { R32: {}, R16: {}, QF: {}, SF: {}, TP: {}, F: {} };
         isBracketInitialized = false;
         
         document.getElementById('prediction-wrapper').classList.add('hidden');
@@ -689,6 +742,34 @@ document.getElementById('delete-scenario-btn')?.addEventListener('click', async 
     }
 });
 
+function renderPhase0Slots() {
+    // Clear all slots first
+    document.querySelectorAll('.allocation-slot').forEach(slot => {
+        slot.innerHTML = '';
+        delete slot.dataset.teamId;
+    });
+
+    // Fill slots based on groupsData
+    Object.keys(groupsData).forEach(group => {
+        const teamsInGroup = groupsData[group];
+        const slots = document.querySelectorAll(`.allocation-group[data-group="${group}"] .allocation-slot`);
+        teamsInGroup.forEach((team, index) => {
+            if (slots[index]) {
+                slots[index].dataset.teamId = team.id;
+                // createTeamBadge expects team.flag_code and team.code
+                // Our groupsData stores flag as team.flag_code, let's normalize
+                const normalizedTeam = {
+                    id: team.id,
+                    name: team.name,
+                    flag_code: team.flag_code || team.flag,
+                    code: team.code
+                };
+                slots[index].appendChild(createTeamBadge(normalizedTeam));
+            }
+        });
+    });
+}
+
 function renderSummaryTable() {
     const container = document.getElementById('summary-container');
     if (!container) return;
@@ -698,23 +779,27 @@ function renderSummaryTable() {
             <h2 class="heading-bold section-title" style="text-align: center; margin-bottom: 30px;">Résumé du Tournoi</h2>
             
             <div class="summary-tier">
-                <div class="summary-tier-header">Champion</div>
+                <div class="summary-tier-header">1ère Place (Champion)</div>
                 <div class="summary-tier-content">${renderTeamBadge(bracket.F.m104.winner)}</div>
             </div>
             
             <div class="summary-tier">
-                <div class="summary-tier-header">Finaliste</div>
+                <div class="summary-tier-header">2ème Place (Finaliste)</div>
                 <div class="summary-tier-content">${renderTeamBadge(getLoser(bracket.F.m104))}</div>
+            </div>
+
+            <div class="summary-tier">
+                <div class="summary-tier-header">3ème Place</div>
+                <div class="summary-tier-content">${renderTeamBadge(bracket.TP?.m103?.winner)}</div>
             </div>
             
             <div class="summary-tier">
-                <div class="summary-tier-header">Demi-finalistes</div>
+                <div class="summary-tier-header">4ème Place</div>
                 <div class="summary-tier-content">
-                    ${renderTeamBadge(getLoser(bracket.SF.m101))}
-                    ${renderTeamBadge(getLoser(bracket.SF.m102))}
+                    ${renderTeamBadge(getLoser(bracket.TP?.m103))}
                 </div>
             </div>
-            
+
             <div class="summary-tier">
                 <div class="summary-tier-header">Quart-de-finalistes</div>
                 <div class="summary-tier-content">
@@ -733,7 +818,7 @@ function renderSummaryTable() {
 }
 
 function getLoser(m) {
-    if (!m.winner || !m.t1 || !m.t2) return null;
+    if (!m || !m.winner || !m.t1 || !m.t2) return null;
     return m.winner.id === m.t1.id ? m.t2 : m.t1;
 }
 

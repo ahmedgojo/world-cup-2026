@@ -39,6 +39,12 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 0 20px;
+    transition: all 0.3s ease;
+}
+
+.dimmed-state {
+    filter: blur(4px) desaturate(0.5);
+    opacity: 0.6;
 }
 
 /* TYPOGRAPHY */
