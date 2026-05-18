@@ -34,6 +34,9 @@ $initialId = $savedState ? $savedState['id'] : 'null';
             <button id="add-scenario-btn" class="btn btn-success" style="padding: 6px 10px; display: flex; align-items: center; justify-content: center; border-radius: 6px;" title="Ajouter une nouvelle prédiction (Invité)">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
+            <button id="view-history-btn" class="btn btn-primary" style="padding: 6px 12px; display: flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;" title="Voir l'Historique Global">
+                🏆 Historique
+            </button>
         </div>
     </div>
 </header>
@@ -118,6 +121,21 @@ $initialId = $savedState ? $savedState['id'] : 'null';
 </main>
 
 <div id="toast-container" class="toast-container"></div>
+
+<!-- GLOBAL HISTORY MODAL -->
+<div id="history-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 class="heading-bold modal-title">🏆 Historique Global</h2>
+            <button id="close-history-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="history-table-container">
+                <p class="loading-text">Chargement de l'historique...</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
     // Initialize state from PHP if available

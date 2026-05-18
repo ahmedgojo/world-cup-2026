@@ -93,6 +93,29 @@ if ($method === 'POST') {
             http_response_code(500);
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action === 'get_history') {
+        try {
+            $sql = "SELECT 
+                        us.id as prediction_id,
+                        us.prediction_name,
+                        MAX(CASE WHEN pr.final_position = 'Champion' THEN t.name END) as champion_name,
+                        MAX(CASE WHEN pr.final_position = 'Champion' THEN t.code END) as champion_code,
+                        MAX(CASE WHEN pr.final_position = 'Champion' THEN t.flag_code END) as champion_flag,
+                        MAX(CASE WHEN pr.final_position = 'Runner-up' THEN t.name END) as runner_up_name,
+                        MAX(CASE WHEN pr.final_position = 'Runner-up' THEN t.code END) as runner_up_code,
+                        MAX(CASE WHEN pr.final_position = 'Runner-up' THEN t.flag_code END) as runner_up_flag
+                    FROM user_state us
+                    JOIN prediction_results pr ON us.id = pr.prediction_id
+                    JOIN teams t ON pr.team_code = t.code
+                    WHERE pr.final_position IN ('Champion', 'Runner-up')
+                    GROUP BY us.id, us.prediction_name, us.updated_at
+                    ORDER BY us.updated_at DESC";
+            $stmt = $pdo->query($sql);
+            echo json_encode($stmt->fetchAll());
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } elseif ($action === 'load_prediction') {
         $id = $_GET['id'] ?? null;
         if ($id) {

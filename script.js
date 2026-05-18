@@ -156,6 +156,22 @@ async function init() {
     if (startNewBtn) {
         startNewBtn.onclick = handleCreateNewPrediction;
     }
+
+    // Global History Modal Bindings
+    const viewHistoryBtn = document.getElementById('view-history-btn');
+    if (viewHistoryBtn) {
+        viewHistoryBtn.onclick = openHistoryModal;
+    }
+    const closeHistoryBtn = document.getElementById('close-history-btn');
+    if (closeHistoryBtn) {
+        closeHistoryBtn.onclick = closeHistoryModal;
+    }
+    const historyModal = document.getElementById('history-modal');
+    if (historyModal) {
+        historyModal.onclick = (e) => {
+            if (e.target === historyModal) closeHistoryModal();
+        };
+    }
 }
 
 async function loadTeams() {
@@ -1117,6 +1133,95 @@ function renderTeamBadge(team) {
             <span>${team.name}</span>
         </div>
     `;
+}
+
+// --- GLOBAL HISTORY LOGIC ---
+
+async function openHistoryModal() {
+    const modal = document.getElementById('history-modal');
+    const container = document.getElementById('history-table-container');
+    if (!modal || !container) return;
+    
+    // Show modal instantly
+    modal.classList.remove('hidden');
+    container.innerHTML = '<p class="loading-text">Chargement de l\'historique...</p>';
+    
+    try {
+        const res = await fetch('api.php?action=get_history');
+        if (!res.ok) throw new Error("HTTP error");
+        const history = await res.json();
+        
+        if (!history || history.length === 0) {
+            container.innerHTML = `
+                <div class="no-history-text">
+                    <p style="font-size: 1.2rem; font-weight: 600; margin-bottom: 8px;">Aucune prédiction terminée</p>
+                    <p style="font-size: 0.95rem; color: var(--text-muted);">Terminez une prédiction (pronostiquez la finale et la 3ème place) pour la voir s'afficher ici !</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Participant / Session</th>
+                        <th>Champion 🥇</th>
+                        <th>Finaliste 🥈</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        history.forEach(item => {
+            html += `
+                <tr>
+                    <td class="history-session-name">${escapeHTML(item.prediction_name)}</td>
+                    <td>
+                        <div class="history-team-cell">
+                            <img src="https://flagcdn.com/w40/${item.champion_flag}.png" alt="${escapeHTML(item.champion_name)}">
+                            <span>${escapeHTML(item.champion_name)}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="history-team-cell">
+                            <img src="https://flagcdn.com/w40/${item.runner_up_flag}.png" alt="${escapeHTML(item.runner_up_name)}">
+                            <span>${escapeHTML(item.runner_up_name)}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                </tbody>
+            </table>
+        `;
+        container.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = '<p class="loading-text" style="color: #ef4444;">Impossible de charger l\'historique.</p>';
+    }
+}
+
+function closeHistoryModal() {
+    const modal = document.getElementById('history-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
 }
 
 document.addEventListener('DOMContentLoaded', init);
