@@ -88,10 +88,27 @@ const nextMatches = {
 // --- INITIALIZATION ---
 
 async function init() {
+    const storedId = localStorage.getItem('active_prediction_id');
+    if (storedId) {
+        currentPredictionId = storedId;
+    }
+
     await loadScenarios();
     await loadTeams();
 
-    if (INITIAL_LOAD_STATE && Object.keys(INITIAL_LOAD_STATE.groupsData || {}).length > 0) {
+    if (storedId) {
+        const resp = await fetch(`api.php?action=load_prediction&id=${storedId}`);
+        if (resp.ok) {
+            const state = await resp.json();
+            if (state && Object.keys(state.groupsData || {}).length > 0) {
+                loadStateData(state);
+            } else {
+                seedDefaultGroups();
+                await saveState(false);
+                loadStateData({ groupsData, groupsState, selectedThirds, bracket });
+            }
+        }
+    } else if (INITIAL_LOAD_STATE && Object.keys(INITIAL_LOAD_STATE.groupsData || {}).length > 0) {
         loadStateData(INITIAL_LOAD_STATE);
     } else if (currentPredictionId) {
         const resp = await fetch(`api.php?action=load_prediction&id=${currentPredictionId}`);
@@ -110,6 +127,7 @@ async function init() {
         if (res.ok) {
             const data = await res.json();
             currentPredictionId = data.id;
+            localStorage.setItem('active_prediction_id', data.id);
             await loadScenarios();
             seedDefaultGroups();
             await saveState(false);
@@ -905,6 +923,8 @@ async function loadScenarios() {
     switcher.onchange = async (e) => {
         const id = e.target.value;
         if (!id) return;
+        
+        localStorage.setItem('active_prediction_id', id);
 
         const toast = showToast("Chargement de la prédiction...", "saving");
         try {
@@ -1004,16 +1024,15 @@ async function handleCreateNewPrediction() {
     const res = await fetch('api.php?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: scenarioName })
+        body: JSON.stringify({ name: scenarioName, groupsData: groupsData })
     });
     
     if (res.ok) {
         const data = await res.json();
         currentPredictionId = data.id;
+        localStorage.setItem('active_prediction_id', data.id);
         
-        // Seed defaults for this guest!
-        seedDefaultGroups();
-        // Persist initial seeded state for this new ID in the DB
+        // Persist inherited state for this new ID in the DB
         await performSave(false);
         
         // Reload dropdown scenario list

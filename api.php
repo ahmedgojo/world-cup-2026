@@ -15,6 +15,18 @@ if ($method === 'POST') {
             $stmt = $pdo->prepare("INSERT INTO user_state (user_id, prediction_name, state_json) VALUES (1, ?, 'null')");
             $stmt->execute([$name]);
             $id = $pdo->lastInsertId();
+            
+            if (isset($input['groupsData']) && is_array($input['groupsData'])) {
+                $groupStmt = $pdo->prepare("INSERT INTO custom_group_draws (prediction_id, group_letter, team_code) VALUES (?, ?, ?)");
+                foreach ($input['groupsData'] as $groupLetter => $teams) {
+                    foreach ($teams as $team) {
+                        if (isset($team['code'])) {
+                            $groupStmt->execute([$id, $groupLetter, $team['code']]);
+                        }
+                    }
+                }
+            }
+            
             echo json_encode(['status' => 'success', 'id' => $id, 'name' => $name]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -123,7 +135,39 @@ if ($method === 'POST') {
                 $stmt = $pdo->prepare("SELECT state_json FROM user_state WHERE id = ? AND user_id = 1");
                 $stmt->execute([$id]);
                 $row = $stmt->fetch();
-                echo $row ? $row['state_json'] : json_encode(null);
+                
+                $state = null;
+                if ($row && $row['state_json'] && $row['state_json'] !== 'null') {
+                    $state = json_decode($row['state_json'], true);
+                }
+                
+                $groupStmt = $pdo->prepare("
+                    SELECT c.group_letter, t.id, t.code, t.name, t.flag_code 
+                    FROM custom_group_draws c
+                    JOIN teams t ON c.team_code = t.code
+                    WHERE c.prediction_id = ?
+                ");
+                $groupStmt->execute([$id]);
+                $customDraws = $groupStmt->fetchAll();
+                
+                if (count($customDraws) > 0) {
+                    if (!$state) $state = [];
+                    $groupsData = [];
+                    foreach ($customDraws as $draw) {
+                        $gl = $draw['group_letter'];
+                        if (!isset($groupsData[$gl])) $groupsData[$gl] = [];
+                        $groupsData[$gl][] = [
+                            'id' => $draw['id'],
+                            'code' => $draw['code'],
+                            'name' => $draw['name'],
+                            'flag_code' => $draw['flag_code'],
+                            'flag' => $draw['flag_code']
+                        ];
+                    }
+                    $state['groupsData'] = $groupsData;
+                }
+                
+                echo json_encode($state);
             } catch (Exception $e) {
                 http_response_code(500);
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -136,7 +180,39 @@ if ($method === 'POST') {
             $stmt->execute();
             $row = $stmt->fetch();
             if ($row) {
-                echo json_encode(['id' => $row['id'], 'state' => json_decode($row['state_json'])]);
+                $id = $row['id'];
+                $state = null;
+                if ($row['state_json'] && $row['state_json'] !== 'null') {
+                    $state = json_decode($row['state_json'], true);
+                }
+                
+                $groupStmt = $pdo->prepare("
+                    SELECT c.group_letter, t.id, t.code, t.name, t.flag_code 
+                    FROM custom_group_draws c
+                    JOIN teams t ON c.team_code = t.code
+                    WHERE c.prediction_id = ?
+                ");
+                $groupStmt->execute([$id]);
+                $customDraws = $groupStmt->fetchAll();
+                
+                if (count($customDraws) > 0) {
+                    if (!$state) $state = [];
+                    $groupsData = [];
+                    foreach ($customDraws as $draw) {
+                        $gl = $draw['group_letter'];
+                        if (!isset($groupsData[$gl])) $groupsData[$gl] = [];
+                        $groupsData[$gl][] = [
+                            'id' => $draw['id'],
+                            'code' => $draw['code'],
+                            'name' => $draw['name'],
+                            'flag_code' => $draw['flag_code'],
+                            'flag' => $draw['flag_code']
+                        ];
+                    }
+                    $state['groupsData'] = $groupsData;
+                }
+                
+                echo json_encode(['id' => $id, 'state' => $state]);
             } else {
                 echo json_encode(null);
             }

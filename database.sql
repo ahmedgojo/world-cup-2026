@@ -80,3 +80,13 @@ CREATE TABLE IF NOT EXISTS prediction_results (
     FOREIGN KEY (team_code) REFERENCES teams(code) ON DELETE CASCADE,
     UNIQUE KEY uq_prediction_team (prediction_id, team_code)
 );
+
+-- Custom Group Draws Table
+CREATE TABLE IF NOT EXISTS custom_group_draws (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    prediction_id INT NOT NULL,
+    group_letter VARCHAR(5) NOT NULL,
+    team_code VARCHAR(10) NOT NULL,
+    FOREIGN KEY (prediction_id) REFERENCES user_state(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_code) REFERENCES teams(code) ON DELETE CASCADE
+);
