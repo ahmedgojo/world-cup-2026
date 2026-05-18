@@ -722,6 +722,69 @@ function clearDownstream(srcId, oldId) {
 
 // --- SYNCING & TOASTS ---
 
+function compileFinalStandings() {
+    // Check if tournament is finished
+    if (!bracket || !bracket.F || !bracket.F.m104 || !bracket.F.m104.winner || !bracket.TP || !bracket.TP.m103 || !bracket.TP.m103.winner) {
+        return null; // not concluded yet
+    }
+
+    const standings = {};
+
+    // 1. Champion & Runner-up
+    const champ = bracket.F.m104.winner.code;
+    const runnerUp = (bracket.F.m104.t1.code === champ) ? bracket.F.m104.t2.code : bracket.F.m104.t1.code;
+    standings[champ] = 'Champion';
+    standings[runnerUp] = 'Runner-up';
+
+    // 2. 3rd & 4th Place
+    const third = bracket.TP.m103.winner.code;
+    const fourth = (bracket.TP.m103.t1.code === third) ? bracket.TP.m103.t2.code : bracket.TP.m103.t1.code;
+    standings[third] = 'Third Place';
+    standings[fourth] = 'Fourth Place';
+
+    // Helper to get loser code
+    const getLoserCode = (m) => {
+        if (!m || !m.winner || !m.t1 || !m.t2) return null;
+        return m.winner.code === m.t1.code ? m.t2.code : m.t1.code;
+    };
+
+    // 3. Quarter-Final losers
+    const qfMatches = ['m97', 'm98', 'm99', 'm100'];
+    qfMatches.forEach(mid => {
+        const loser = getLoserCode(bracket.QF?.[mid]);
+        if (loser) standings[loser] = 'Eliminated - Quarter-Finals';
+    });
+
+    // 4. Round of 16 losers
+    const r16Matches = ['m89', 'm90', 'm91', 'm92', 'm93', 'm94', 'm95', 'm96'];
+    r16Matches.forEach(mid => {
+        const loser = getLoserCode(bracket.R16?.[mid]);
+        if (loser) standings[loser] = 'Eliminated - Round of 16';
+    });
+
+    // 5. Round of 32 losers
+    const r32Matches = ['m73', 'm74', 'm75', 'm76', 'm77', 'm78', 'm79', 'm80', 'm81', 'm82', 'm83', 'm84', 'm85', 'm86', 'm87', 'm88'];
+    r32Matches.forEach(mid => {
+        const loser = getLoserCode(bracket.R32?.[mid]);
+        if (loser) standings[loser] = 'Eliminated - Round of 32';
+    });
+
+    // 6. Group Stage losers (remaining teams)
+    Object.values(groupsData).forEach(groupTeams => {
+        groupTeams.forEach(t => {
+            if (!standings[t.code]) {
+                standings[t.code] = 'Eliminated - Group Stage';
+            }
+        });
+    });
+
+    // Map to array of objects
+    return Object.keys(standings).map(code => ({
+        team_code: code,
+        final_position: standings[code]
+    }));
+}
+
 let saveTimeout = null;
 let currentToast = null;
 
@@ -739,7 +802,15 @@ async function saveState(isAuto = true) {
 async function performSave(isAuto) {
     const toast = showToast(isAuto ? "Sauvegarde..." : "Finalisation...", "saving");
     
-    const data = { groupsData, groupsState, selectedThirds, bracket };
+    const finalStandings = compileFinalStandings();
+    const data = { 
+        groupsData, 
+        groupsState, 
+        selectedThirds, 
+        bracket,
+        finalStandings
+    };
+    
     try {
         const url = currentPredictionId ? `api.php?action=save&id=${currentPredictionId}` : 'api.php?action=save';
         const res = await fetch(url, {

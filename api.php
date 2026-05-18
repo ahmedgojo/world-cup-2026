@@ -42,10 +42,31 @@ if ($method === 'POST') {
 
         if ($input && $id) {
             try {
+                $data = json_decode($input, true);
+                
+                $pdo->beginTransaction();
+                
                 $stmt = $pdo->prepare("UPDATE user_state SET state_json = ? WHERE id = ? AND user_id = 1");
                 $stmt->execute([$input, $id]);
+                
+                if (isset($data['finalStandings']) && is_array($data['finalStandings'])) {
+                    // Clear previous results for this prediction session to prevent duplicates
+                    $deleteStmt = $pdo->prepare("DELETE FROM prediction_results WHERE prediction_id = ?");
+                    $deleteStmt->execute([$id]);
+                    
+                    // Insert achievements
+                    $insertStmt = $pdo->prepare("INSERT INTO prediction_results (prediction_id, team_code, final_position) VALUES (?, ?, ?)");
+                    foreach ($data['finalStandings'] as $resItem) {
+                        $insertStmt->execute([$id, $resItem['team_code'], $resItem['final_position']]);
+                    }
+                }
+                
+                $pdo->commit();
                 echo json_encode(['status' => 'success', 'message' => 'État sauvegardé']);
             } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
                 http_response_code(500);
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             }

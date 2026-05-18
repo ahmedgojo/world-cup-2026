@@ -68,3 +68,15 @@ INSERT INTO teams (code, name, flag_code) VALUES
 ('cro', 'Croatia', 'hr'),
 ('pan', 'Panama', 'pa'),
 ('gha', 'Ghana', 'gh');
+
+-- Prediction Results Table
+CREATE TABLE IF NOT EXISTS prediction_results (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    prediction_id INT NOT NULL,
+    team_code VARCHAR(10) NOT NULL,
+    tournament_year INT DEFAULT 2026,
+    final_position VARCHAR(50) NOT NULL,
+    FOREIGN KEY (prediction_id) REFERENCES user_state(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_code) REFERENCES teams(code) ON DELETE CASCADE,
+    UNIQUE KEY uq_prediction_team (prediction_id, team_code)
+);
