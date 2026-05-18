@@ -13,6 +13,46 @@ let selectedThirds = [];
 let bracket = { R32: {}, R16: {}, QF: {}, SF: {}, F: {} };
 let isBracketInitialized = false;
 
+const SEEDED_GROUPS = {
+    A: ['mex', 'kor', 'rsa', 'cze'],
+    B: ['can', 'sui', 'bih', 'qat'],
+    C: ['bra', 'mor', 'sco', 'hai'],
+    D: ['usa', 'tur', 'par', 'aus'],
+    E: ['ger', 'ecu', 'civ', 'cuw'],
+    F: ['ned', 'jpn', 'swe', 'tun'],
+    G: ['bel', 'egy', 'irn', 'nzl'],
+    H: ['spa', 'uru', 'ksa', 'cpv'],
+    I: ['fra', 'sen', 'nor', 'irq'],
+    J: ['arg', 'aut', 'alg', 'jor'],
+    K: ['por', 'col', 'uzb', 'cod'],
+    L: ['eng', 'cro', 'pan', 'gha']
+};
+
+function seedDefaultGroups() {
+    groupsData = {};
+    groupsState = {};
+    selectedThirds = [];
+    bracket = { R32: {}, R16: {}, QF: {}, SF: {}, TP: {}, F: {} };
+    isBracketInitialized = false;
+
+    Object.keys(SEEDED_GROUPS).forEach(group => {
+        groupsData[group] = [];
+        groupsState[group] = []; // Empty pos for predictions in Phase 1
+        SEEDED_GROUPS[group].forEach(code => {
+            const team = teams.find(t => t.code.toLowerCase() === code.toLowerCase());
+            if (team) {
+                groupsData[group].push({
+                    id: team.id,
+                    name: team.name,
+                    flag: team.flag || team.flag_code,
+                    flag_code: team.flag_code || team.flag,
+                    code: team.code
+                });
+            }
+        });
+    });
+}
+
 const roundsInfo = [
     { id: 'R32', name: 'SEIZIÈMES DE FINALE', matches: ['m73', 'm74', 'm75', 'm76', 'm77', 'm78', 'm79', 'm80', 'm81', 'm82', 'm83', 'm84', 'm85', 'm86', 'm87', 'm88'] },
     { id: 'R16', name: 'HUITIÈMES DE FINALE', matches: ['m89', 'm90', 'm91', 'm92', 'm93', 'm94', 'm95', 'm96'] },
@@ -51,19 +91,30 @@ async function init() {
     await loadScenarios();
     await loadTeams();
 
-    if (INITIAL_LOAD_STATE || currentPredictionId) {
+    if (INITIAL_LOAD_STATE && Object.keys(INITIAL_LOAD_STATE.groupsData || {}).length > 0) {
         loadStateData(INITIAL_LOAD_STATE);
+    } else if (currentPredictionId) {
+        const resp = await fetch(`api.php?action=load_prediction&id=${currentPredictionId}`);
+        if (resp.ok) {
+            const state = await resp.json();
+            if (state && Object.keys(state.groupsData || {}).length > 0) {
+                loadStateData(state);
+            } else {
+                seedDefaultGroups();
+                await saveState(false);
+                loadStateData({ groupsData, groupsState, selectedThirds, bracket });
+            }
+        }
     } else {
-        // If no state exists, we need to create one first to get a currentPredictionId
         const res = await fetch('api.php?action=create', { method: 'POST' });
         if (res.ok) {
             const data = await res.json();
             currentPredictionId = data.id;
             await loadScenarios();
+            seedDefaultGroups();
+            await saveState(false);
+            loadStateData({ groupsData, groupsState, selectedThirds, bracket });
         }
-        
-        renderPool();
-        initAllocationDragAndDrop();
     }
 
     // DIMMED STATE UI CUE
@@ -75,24 +126,26 @@ async function init() {
                 mainContainer.classList.remove('dimmed-state');
                 document.removeEventListener('mousedown', removeDimmed);
                 document.removeEventListener('dragstart', removeDimmed);
+                document.removeEventListener('click', removeDimmed);
             };
             document.addEventListener('mousedown', removeDimmed);
             document.addEventListener('dragstart', removeDimmed);
+            document.addEventListener('click', removeDimmed);
         }
     }
 
     // Initialize Phase Navigation
     const backBtn = document.getElementById('back-to-draw-btn');
-    if (backBtn) {
-        backBtn.onclick = () => {
-            document.getElementById('prediction-wrapper').classList.add('hidden');
-            document.getElementById('phase0').classList.remove('hidden');
-            // Ensure pool and drag/drop are ready
-            if (teams.length === 0) loadTeams().then(() => renderPool());
-            else renderPool();
-            initAllocationDragAndDrop();
-        };
-    }
+    const configBtn = document.getElementById('config-teams-btn');
+    const goPhase0 = () => {
+        document.getElementById('prediction-wrapper').classList.add('hidden');
+        document.getElementById('phase0').classList.remove('hidden');
+        if (teams.length === 0) loadTeams().then(() => { renderPool(); renderPhase0Slots(); });
+        else { renderPool(); renderPhase0Slots(); }
+        initAllocationDragAndDrop();
+    };
+    if (backBtn) backBtn.onclick = goPhase0;
+    if (configBtn) configBtn.onclick = goPhase0;
 }
 
 async function loadTeams() {
@@ -116,6 +169,12 @@ function renderPool() {
     const pool = document.getElementById('team-pool');
     const poolCount = document.getElementById('pool-count');
     pool.innerHTML = '';
+    
+    if (!pool.dataset.listenersInitialized) {
+        pool.addEventListener('dragover', e => e.preventDefault());
+        pool.addEventListener('drop', handlePoolDrop);
+        pool.dataset.listenersInitialized = 'true';
+    }
     
     // Filter out teams already assigned to groups
     const assignedIds = Object.values(groupsData).flat().map(t => t.id);
@@ -150,8 +209,11 @@ function createTeamBadge(team) {
 let draggedTeam = null;
 
 function handlePoolDragStart(e) {
-    draggedTeam = teams.find(t => t.id == this.dataset.teamId);
-    e.dataTransfer.setData('text/plain', this.dataset.teamId);
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'pool', teamId: this.dataset.teamId }));
+}
+
+function handleSlottedDragStart(e) {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'slotted', teamId: this.dataset.teamId, sourceGroup: this.dataset.sourceGroup }));
 }
 
 function initAllocationDragAndDrop() {
@@ -170,11 +232,96 @@ function handleAllocationDrop(e) {
     const slot = e.target.closest('.allocation-slot');
     slot.classList.remove('drag-over');
     
-    if (draggedTeam && !slot.hasChildNodes()) {
-        assignTeamToGroup(slot, draggedTeam);
-        draggedTeam = null;
+    const dataStr = e.dataTransfer.getData('text/plain');
+    if (!dataStr) return;
+    
+    let dragData;
+    try {
+        dragData = JSON.parse(dataStr);
+    } catch(err) {
+        dragData = { type: 'pool', teamId: dataStr };
+    }
+    
+    const teamId = dragData.teamId;
+    const team = teams.find(t => t.id == teamId);
+    if (!team) return;
+
+    if (dragData.type === 'pool') {
+        if (!slot.hasChildNodes()) {
+            assignTeamToGroup(slot, team);
+            renderPool();
+            saveState(true);
+        }
+    } else if (dragData.type === 'slotted') {
+        const sourceGroup = dragData.sourceGroup;
+        const targetGroup = slot.closest('.allocation-group').dataset.group;
+
+        if (slot.hasChildNodes()) {
+            // Swap
+            const targetTeamId = slot.dataset.teamId;
+            const targetTeam = teams.find(t => t.id == targetTeamId);
+            const sourceSlot = document.querySelector(`.allocation-group[data-group="${sourceGroup}"] .allocation-slot[data-team-id="${teamId}"]`);
+            
+            groupsData[sourceGroup] = groupsData[sourceGroup].filter(t => t.id != teamId);
+            groupsData[targetGroup] = groupsData[targetGroup].filter(t => t.id != targetTeamId);
+            
+            assignTeamToGroup(slot, team);
+            if (sourceSlot) {
+                assignTeamToGroup(sourceSlot, targetTeam);
+            } else {
+                groupsData[sourceGroup].push({
+                    id: targetTeam.id,
+                    name: targetTeam.name,
+                    flag: targetTeam.flag || targetTeam.flag_code,
+                    flag_code: targetTeam.flag_code || targetTeam.flag,
+                    code: targetTeam.code
+                });
+            }
+        } else {
+            // Move
+            const sourceSlot = document.querySelector(`.allocation-group[data-group="${sourceGroup}"] .allocation-slot[data-team-id="${teamId}"]`);
+            if (sourceSlot) {
+                sourceSlot.innerHTML = '';
+                delete sourceSlot.dataset.teamId;
+            }
+            
+            groupsData[sourceGroup] = groupsData[sourceGroup].filter(t => t.id != teamId);
+            assignTeamToGroup(slot, team);
+        }
+        
         renderPool();
-        saveState(true); // Auto-save partial Phase 0
+        renderPhase0Slots();
+        saveState(true);
+    }
+}
+
+function handlePoolDrop(e) {
+    e.preventDefault();
+    const dataStr = e.dataTransfer.getData('text/plain');
+    if (!dataStr) return;
+    
+    let dragData;
+    try {
+        dragData = JSON.parse(dataStr);
+    } catch(err) {
+        return;
+    }
+    
+    if (dragData.type === 'slotted') {
+        const teamId = dragData.teamId;
+        const sourceGroup = dragData.sourceGroup;
+        
+        const sourceSlot = document.querySelector(`.allocation-group[data-group="${sourceGroup}"] .allocation-slot[data-team-id="${teamId}"]`);
+        if (sourceSlot) {
+            sourceSlot.innerHTML = '';
+            delete sourceSlot.dataset.teamId;
+        }
+        
+        groupsData[sourceGroup] = groupsData[sourceGroup].filter(t => t.id != teamId);
+        
+        renderPool();
+        renderPhase0Slots();
+        saveState(true);
     }
 }
 
@@ -206,7 +353,13 @@ function assignTeamToGroup(slot, team) {
     });
     
     slot.dataset.teamId = team.id;
-    slot.appendChild(createTeamBadge(team));
+    slot.innerHTML = '';
+    const badge = createTeamBadge(team);
+    badge.draggable = true;
+    badge.dataset.teamId = team.id;
+    badge.dataset.sourceGroup = group;
+    badge.addEventListener('dragstart', handleSlottedDragStart);
+    slot.appendChild(badge);
 }
 
 function checkAllocationCompletion() {
@@ -654,11 +807,49 @@ async function loadScenarios() {
 
     switcher.onchange = async (e) => {
         const id = e.target.value;
-        const resp = await fetch(`api.php?action=load_prediction&id=${id}`);
-        if (resp.ok) {
-            const state = await resp.json();
-            currentPredictionId = id;
-            loadStateData(state);
+        if (!id) return;
+
+        const toast = showToast("Chargement de la prédiction...", "saving");
+        try {
+            const resp = await fetch(`api.php?action=load_prediction&id=${id}`);
+            if (resp.ok) {
+                let state = await resp.json();
+                currentPredictionId = id;
+                
+                // Fallback: If empty state or newly created guest session, seed defaults!
+                if (!state || Object.keys(state.groupsData || {}).length === 0) {
+                    seedDefaultGroups();
+                    state = { groupsData, groupsState, selectedThirds, bracket };
+                    // Persist this newly seeded state in the database right away
+                    await performSave(false);
+                }
+
+                loadStateData(state);
+                updateToast(toast, "Prédiction chargée ✔", "saved");
+                setTimeout(() => hideToast(toast), 1500);
+
+                // Re-apply visual dimmed-state blur effect for loaded prediction feedback
+                const mainContainer = document.querySelector('main');
+                if (mainContainer) {
+                    mainContainer.classList.add('dimmed-state');
+                    const removeDimmed = () => {
+                        mainContainer.classList.remove('dimmed-state');
+                        document.removeEventListener('mousedown', removeDimmed);
+                        document.removeEventListener('dragstart', removeDimmed);
+                        document.removeEventListener('click', removeDimmed);
+                    };
+                    document.addEventListener('mousedown', removeDimmed);
+                    document.addEventListener('dragstart', removeDimmed);
+                    document.addEventListener('click', removeDimmed);
+                }
+            } else {
+                updateToast(toast, "Erreur de chargement", "error");
+                setTimeout(() => hideToast(toast), 3000);
+            }
+        } catch (err) {
+            console.error("Failed to load scenario", err);
+            updateToast(toast, "Erreur de chargement", "error");
+            setTimeout(() => hideToast(toast), 3000);
         }
     };
 }
@@ -688,59 +879,73 @@ function loadStateData(state) {
         checkPhase1Completion(); 
         if (selectedThirds.length === 8) {
             renderKnockouts();
+        } else {
+            const p3 = document.getElementById('phase3');
+            if (p3) p3.classList.add('hidden');
+            const sumContainer = document.getElementById('summary-container');
+            if (sumContainer) sumContainer.innerHTML = '';
         }
     }
 }
 
-document.getElementById('start-new-btn')?.addEventListener('click', async () => {
-    const res = await fetch('api.php?action=create', { method: 'POST' });
+async function handleCreateNewPrediction() {
+    const guestName = prompt("Entrez le nom du participant (Invité) :");
+    if (!guestName) return; // cancelled or empty
+
+    // Get Morocco local time
+    const moroccoTime = new Date().toLocaleString("fr-FR", {
+        timeZone: "Africa/Casablanca",
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+    const scenarioName = `${guestName} - ${moroccoTime}`;
+
+    const toast = showToast("Création du scénario...", "saving");
+    // Create new scenario with this name
+    const res = await fetch('api.php?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: scenarioName })
+    });
+    
     if (res.ok) {
         const data = await res.json();
         currentPredictionId = data.id;
         
-        groupsData = {};
-        groupsState = {};
-        selectedThirds = [];
-        bracket = { R32: {}, R16: {}, QF: {}, SF: {}, TP: {}, F: {} };
-        isBracketInitialized = false;
+        // Seed defaults for this guest!
+        seedDefaultGroups();
+        // Persist initial seeded state for this new ID in the DB
+        await performSave(false);
         
-        document.getElementById('prediction-wrapper').classList.add('hidden');
-        document.getElementById('phase0').classList.remove('hidden');
-        document.getElementById('phase2').classList.add('hidden');
-        document.getElementById('phase3').classList.add('hidden');
-        
+        // Reload dropdown scenario list
         await loadScenarios();
-        if (teams.length === 0) await loadTeams();
-        renderPool();
-        initAllocationDragAndDrop();
+        // Load default state in UI
+        loadStateData({ groupsData, groupsState, selectedThirds, bracket });
         
-        showToast("Nouveau scénario démarré", "saved");
-    }
-});
+        // Clean up downstream phases
+        const p2 = document.getElementById('phase2');
+        if (p2) p2.classList.add('hidden');
+        const p3 = document.getElementById('phase3');
+        if (p3) p3.classList.add('hidden');
+        const sumContainer = document.getElementById('summary-container');
+        if (sumContainer) sumContainer.innerHTML = '';
 
-document.getElementById('delete-scenario-btn')?.addEventListener('click', async () => {
-    if (!currentPredictionId) return;
-    
-    if (confirm("Êtes-vous sûr de vouloir supprimer cette prédiction ?")) {
-        const res = await fetch(`api.php?action=delete&id=${currentPredictionId}`, { method: 'POST' });
-        if (res.ok) {
-            showToast("Prédiction supprimée", "saved");
-            
-            currentPredictionId = null;
-            await loadScenarios();
-            
-            const switcher = document.getElementById('scenario-switcher');
-            if (switcher && switcher.options.length > 0) {
-                switcher.value = switcher.options[0].value;
-                switcher.dispatchEvent(new Event('change'));
-            } else {
-                document.getElementById('start-new-btn')?.click();
-            }
-        } else {
-            showToast("Erreur de suppression", "error");
-        }
+        updateToast(toast, `Scénario créé pour ${guestName} ✔`, "saved");
+        setTimeout(() => hideToast(toast), 1500);
+    } else {
+        updateToast(toast, "Erreur de création", "error");
+        setTimeout(() => hideToast(toast), 3000);
     }
-});
+}
+
+document.getElementById('start-new-btn')?.addEventListener('click', handleCreateNewPrediction);
+
+const addBtn = document.getElementById('add-scenario-btn');
+if (addBtn) {
+    addBtn.onclick = handleCreateNewPrediction;
+}
 
 function renderPhase0Slots() {
     // Clear all slots first
@@ -755,16 +960,22 @@ function renderPhase0Slots() {
         const slots = document.querySelectorAll(`.allocation-group[data-group="${group}"] .allocation-slot`);
         teamsInGroup.forEach((team, index) => {
             if (slots[index]) {
-                slots[index].dataset.teamId = team.id;
-                // createTeamBadge expects team.flag_code and team.code
-                // Our groupsData stores flag as team.flag_code, let's normalize
+                const slot = slots[index];
+                slot.dataset.teamId = team.id;
+                
                 const normalizedTeam = {
                     id: team.id,
                     name: team.name,
                     flag_code: team.flag_code || team.flag,
                     code: team.code
                 };
-                slots[index].appendChild(createTeamBadge(normalizedTeam));
+                
+                const badge = createTeamBadge(normalizedTeam);
+                badge.draggable = true;
+                badge.dataset.teamId = team.id;
+                badge.dataset.sourceGroup = group;
+                badge.addEventListener('dragstart', handleSlottedDragStart);
+                slot.appendChild(badge);
             }
         });
     });

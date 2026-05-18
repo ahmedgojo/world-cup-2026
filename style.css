@@ -1,17 +1,17 @@
 :root {
-    /* Color Palette */
-    --bg-deep: #0b0e14;
-    --bg-darker: #111827;
-    --card-bg: rgba(31, 41, 55, 0.4);
-    --card-border: rgba(255, 255, 255, 0.1);
+    /* Color Palette - Premium Light Theme */
+    --bg-deep: #f3f4f6;
+    --bg-darker: #ffffff;
+    --card-bg: rgba(255, 255, 255, 0.85);
+    --card-border: rgba(0, 0, 0, 0.08);
     
-    --text-main: #f9fafb;
-    --text-muted: #9ca3af;
+    --text-main: #1f2937;
+    --text-muted: #4b5563;
     
-    --primary-glow: #06b6d4;
-    --success-glow: #10b981;
-    --warn-glow: #f59e0b;
-    --error-glow: #ef4444;
+    --primary-glow: #0891b2;
+    --success-glow: #059669;
+    --warn-glow: #d97706;
+    --error-glow: #dc2626;
     
     --font-heading: 'Montserrat', sans-serif;
     --font-body: 'Inter', sans-serif;
@@ -26,8 +26,8 @@
 body {
     background-color: var(--bg-deep);
     background-image: 
-        radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+        radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
     color: var(--text-main);
     font-family: var(--font-body);
     line-height: 1.6;
@@ -58,7 +58,7 @@ body {
 .app-header {
     padding: 60px 0;
     text-align: center;
-    background: rgba(11, 14, 20, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--card-border);
     margin-bottom: 80px;
@@ -68,7 +68,7 @@ body {
 
 .app-header h1 {
     font-size: 3rem;
-    background: linear-gradient(to right, #fff, #94a3b8);
+    background: linear-gradient(to right, #0f172a, #334155);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 8px;
@@ -87,8 +87,8 @@ section {
 .section-title {
     font-size: 2.2rem;
     margin-bottom: 8px;
-    color: #fff;
-    text-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+    color: #111827;
+    text-shadow: 0 0 20px rgba(6, 182, 212, 0.08);
 }
 
 .section-subtitle {
@@ -159,12 +159,12 @@ section {
     border-radius: 20px;
     padding: 24px;
     transition: all 0.3s ease;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
 }
 
 .card:hover {
-    border-color: rgba(6, 182, 212, 0.4);
-    box-shadow: 0 0 25px rgba(6, 182, 212, 0.15);
+    border-color: rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.06);
     transform: translateY(-4px);
 }
 
@@ -226,8 +226,8 @@ section {
 
 /* TEAM BADGES */
 .team-badge {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 10px;
     padding: 10px 14px;
     cursor: pointer;
@@ -237,14 +237,14 @@ section {
     gap: 10px;
     transition: all 0.2s;
     user-select: none;
-    color: #fff;
+    color: var(--text-main);
     font-weight: 600;
 }
 
 .team-badge:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.05);
     border-color: var(--primary-glow);
-    box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
 }
 
 .team-flag-img {
@@ -331,7 +331,7 @@ section {
 }
 
 .team-pool {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(0, 0, 0, 0.01);
     border: 1px solid var(--card-border);
     border-radius: 20px;
     padding: 30px;
@@ -344,8 +344,8 @@ section {
 /* SLOTS & DOCKING STATIONS */
 .slot, .allocation-slot {
     height: 54px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.06);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -368,21 +368,21 @@ section {
 .slot-number {
     width: 32px;
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.2);
+    color: rgba(0, 0, 0, 0.15);
     font-size: 1.2rem;
     font-family: var(--font-heading);
 }
 
 .slot.filled {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* 1st & 2nd place docking */
 .slot.filled:nth-child(2),
 .slot.filled:nth-child(3) {
-    border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: inset 0 0 15px rgba(16, 185, 129, 0.05);
+    border-color: rgba(5, 150, 105, 0.2);
+    box-shadow: inset 0 0 15px rgba(5, 150, 105, 0.03);
 }
 
 .slot.filled:nth-child(2)::before,
@@ -393,8 +393,8 @@ section {
 
 /* 3rd place docking */
 .slot.filled:nth-child(4) {
-    border-color: rgba(245, 158, 11, 0.3);
-    box-shadow: inset 0 0 15px rgba(245, 158, 11, 0.05);
+    border-color: rgba(217, 119, 6, 0.2);
+    box-shadow: inset 0 0 15px rgba(217, 119, 6, 0.03);
 }
 
 .slot.filled:nth-child(4)::before {
@@ -444,7 +444,7 @@ section {
 .round-section h3 {
     margin-bottom: 24px;
     font-size: 1.8rem;
-    color: #fff;
+    color: #000000;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--card-border);
 }
@@ -498,11 +498,11 @@ section {
     color: var(--text-muted);
     font-style: italic;
     cursor: default;
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.02);
 }
 
 .match-team:not(.empty):hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.02);
 }
 
 .match-team.active {
@@ -527,8 +527,8 @@ section {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -552,9 +552,9 @@ section {
 .final-winner-card {
     text-align: center;
     padding: 60px;
-    background: radial-gradient(circle at center, rgba(6, 182, 212, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle at center, rgba(6, 182, 212, 0.05) 0%, transparent 70%);
     border: 1px solid var(--primary-glow);
-    box-shadow: 0 0 40px rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 40px rgba(6, 182, 212, 0.08);
 }
 
 .final-winner-card .team-flag-img {
@@ -565,8 +565,8 @@ section {
 
 .final-winner-card .team-name {
     font-size: 3rem;
-    color: #fff;
-    text-shadow: 0 0 30px var(--primary-glow);
+    color: var(--text-main);
+    text-shadow: 0 0 30px rgba(6, 182, 212, 0.15);
 }
 
 /* TOAST NOTIFICATION */
@@ -581,16 +581,16 @@ section {
 }
 
 .toast {
-    background: rgba(17, 24, 39, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(12px);
     border: 1px solid var(--card-border);
     padding: 12px 24px;
     border-radius: 12px;
-    color: #fff;
+    color: var(--text-main);
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06);
     font-size: 0.9rem;
     font-weight: 600;
     transform: translateX(120%);
@@ -632,8 +632,8 @@ section {
 }
 
 .scenario-switcher {
-    background: rgba(31, 41, 55, 0.8);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--text-main);
     border: 1px solid var(--primary-glow);
     padding: 10px 16px;
     border-radius: 8px;
@@ -641,7 +641,7 @@ section {
     font-size: 1rem;
     cursor: pointer;
     outline: none;
-    box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.05);
 }
 
 .scenario-switcher:focus {
@@ -697,11 +697,11 @@ section {
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 8px;
     font-size: 0.9rem;
-    color: #fff;
+    color: var(--text-main);
 }
 
 .summary-team img {

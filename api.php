@@ -10,7 +10,8 @@ $action = $_GET['action'] ?? '';
 if ($method === 'POST') {
     if ($action === 'create') {
         try {
-            $name = "Prédiction " . date("d M, H:i");
+            $input = json_decode(file_get_contents('php://input'), true);
+            $name = $input['name'] ?? $_GET['name'] ?? ("Prédiction " . date("d M, H:i"));
             $stmt = $pdo->prepare("INSERT INTO user_state (user_id, prediction_name, state_json) VALUES (1, ?, 'null')");
             $stmt->execute([$name]);
             $id = $pdo->lastInsertId();
