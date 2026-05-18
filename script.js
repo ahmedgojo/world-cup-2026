@@ -146,6 +146,16 @@ async function init() {
     };
     if (backBtn) backBtn.onclick = goPhase0;
     if (configBtn) configBtn.onclick = goPhase0;
+
+    // Initialize Button Event Listeners inside init() for absolute robustness
+    const addBtn = document.getElementById('add-scenario-btn');
+    if (addBtn) {
+        addBtn.onclick = handleCreateNewPrediction;
+    }
+    const startNewBtn = document.getElementById('start-new-btn');
+    if (startNewBtn) {
+        startNewBtn.onclick = handleCreateNewPrediction;
+    }
 }
 
 async function loadTeams() {
@@ -940,12 +950,7 @@ async function handleCreateNewPrediction() {
     }
 }
 
-document.getElementById('start-new-btn')?.addEventListener('click', handleCreateNewPrediction);
 
-const addBtn = document.getElementById('add-scenario-btn');
-if (addBtn) {
-    addBtn.onclick = handleCreateNewPrediction;
-}
 
 function renderPhase0Slots() {
     // Clear all slots first

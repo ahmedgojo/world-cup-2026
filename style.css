@@ -322,19 +322,30 @@ section {
 /* PHASE 0: POOL */
 .pool-container {
     margin-bottom: 50px;
+    position: sticky;
+    top: 20px;
+    z-index: 100;
+    background: rgba(245, 247, 250, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    border-radius: 20px;
+    padding: 24px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .pool-title {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     font-size: 1.2rem;
     color: var(--primary-glow);
 }
 
 .team-pool {
-    background: rgba(0, 0, 0, 0.01);
-    border: 1px solid var(--card-border);
-    border-radius: 20px;
-    padding: 30px;
+    background: transparent;
+    border: none;
+    padding: 0;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
     gap: 12px;
