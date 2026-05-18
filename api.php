@@ -61,6 +61,21 @@ if ($method === 'POST') {
                 $stmt = $pdo->prepare("UPDATE user_state SET state_json = ? WHERE id = ? AND user_id = 1");
                 $stmt->execute([$input, $id]);
                 
+                // Save custom group draws
+                if (isset($data['groupsData']) && is_array($data['groupsData'])) {
+                    $deleteGroupsStmt = $pdo->prepare("DELETE FROM custom_group_draws WHERE prediction_id = ?");
+                    $deleteGroupsStmt->execute([$id]);
+                    
+                    $insertGroupStmt = $pdo->prepare("INSERT INTO custom_group_draws (prediction_id, group_letter, team_code) VALUES (?, ?, ?)");
+                    foreach ($data['groupsData'] as $groupLetter => $teams) {
+                        foreach ($teams as $team) {
+                            if (isset($team['code'])) {
+                                $insertGroupStmt->execute([$id, $groupLetter, $team['code']]);
+                            }
+                        }
+                    }
+                }
+                
                 if (isset($data['finalStandings']) && is_array($data['finalStandings'])) {
                     // Clear previous results for this prediction session to prevent duplicates
                     $deleteStmt = $pdo->prepare("DELETE FROM prediction_results WHERE prediction_id = ?");

@@ -108,8 +108,6 @@ async function init() {
                 loadStateData({ groupsData, groupsState, selectedThirds, bracket });
             }
         }
-    } else if (INITIAL_LOAD_STATE && Object.keys(INITIAL_LOAD_STATE.groupsData || {}).length > 0) {
-        loadStateData(INITIAL_LOAD_STATE);
     } else if (currentPredictionId) {
         const resp = await fetch(`api.php?action=load_prediction&id=${currentPredictionId}`);
         if (resp.ok) {
