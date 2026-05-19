@@ -35,7 +35,7 @@ $initialId = $savedState ? $savedState['id'] : 'null';
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
             <button id="view-history-btn" class="btn btn-primary" style="padding: 6px 12px; display: flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;" title="Voir l'Historique Global">
-                🏆 Historique
+                 Historique
             </button>
         </div>
     </div>
@@ -80,7 +80,7 @@ $initialId = $savedState ? $savedState['id'] : 'null';
     <div id="prediction-wrapper" class="<?= $hasSavedState ? '' : 'hidden' ?>">
         <section id="phase1">
             <div class="phase-header">
-                <button id="config-teams-btn" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; margin-bottom: 20px;">⚙️ Configurer les équipes</button>
+                <button id="config-teams-btn" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; margin-bottom: 20px;"> Configurer les équipes</button>
                 <button id="back-to-draw-btn" class="btn btn-secondary" style="display: none;">← Retour au tirage des groupes</button>
             </div>
             <h2 class="heading-bold section-title">PHASE DE GROUPES</h2>
@@ -126,7 +126,7 @@ $initialId = $savedState ? $savedState['id'] : 'null';
 <div id="history-modal" class="modal-overlay hidden">
     <div class="modal-card">
         <div class="modal-header">
-            <h2 class="heading-bold modal-title">🏆 Historique Global</h2>
+            <h2 class="heading-bold modal-title"> Historique Global</h2>
             <button id="close-history-btn" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">

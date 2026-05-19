@@ -53,6 +53,30 @@ function seedDefaultGroups() {
     });
 }
 
+function resetStateVariables(keepGroupsData = false) {
+    if (!keepGroupsData) groupsData = {};
+    groupsState = {};
+    if (keepGroupsData && Object.keys(groupsData).length > 0) {
+        Object.keys(groupsData).forEach(g => {
+            groupsState[g] = [];
+        });
+    }
+    selectedThirds = [];
+    bracket = { R32: {}, R16: {}, QF: {}, SF: {}, TP: {}, F: {} };
+    isBracketInitialized = false;
+
+    // Strict UI isolation / clear old ghost data
+    const p2 = document.getElementById('phase2');
+    if (p2) p2.classList.add('hidden');
+    const p3 = document.getElementById('phase3');
+    if (p3) p3.classList.add('hidden');
+    
+    const sumContainer = document.getElementById('summary-container');
+    if (sumContainer) sumContainer.innerHTML = '';
+    const koContainer = document.getElementById('knockout-container');
+    if (koContainer) koContainer.innerHTML = '';
+}
+
 const roundsInfo = [
     { id: 'R32', name: 'SEIZIÈMES DE FINALE', matches: ['m73', 'm74', 'm75', 'm76', 'm77', 'm78', 'm79', 'm80', 'm81', 'm82', 'm83', 'm84', 'm85', 'm86', 'm87', 'm88'] },
     { id: 'R16', name: 'HUITIÈMES DE FINALE', matches: ['m89', 'm90', 'm91', 'm92', 'm93', 'm94', 'm95', 'm96'] },
@@ -95,6 +119,9 @@ async function init() {
 
     await loadScenarios();
     await loadTeams();
+    
+    // Clear state before loading
+    resetStateVariables(true);
 
     if (storedId) {
         const resp = await fetch(`api.php?action=load_prediction&id=${storedId}`);
@@ -115,6 +142,7 @@ async function init() {
             if (state && Object.keys(state.groupsData || {}).length > 0) {
                 loadStateData(state);
             } else {
+                resetStateVariables(false);
                 seedDefaultGroups();
                 await saveState(false);
                 loadStateData({ groupsData, groupsState, selectedThirds, bracket });
@@ -127,6 +155,8 @@ async function init() {
             currentPredictionId = data.id;
             localStorage.setItem('active_prediction_id', data.id);
             await loadScenarios();
+            
+            resetStateVariables(false);
             seedDefaultGroups();
             await saveState(false);
             loadStateData({ groupsData, groupsState, selectedThirds, bracket });
@@ -563,12 +593,12 @@ function renderPhase2() {
     container.innerHTML = '';
     
     const currentThirds = Object.keys(groupsState).sort().map(g => ({ groupId: g, team: groupsState[g][2] }));
-    selectedThirds = selectedThirds.filter(st => currentThirds.find(ct => ct.team.id === st.id));
+    selectedThirds = selectedThirds.filter(st => currentThirds.find(ct => ct.team && ct.team.id == st.id));
     
     updateThirdsCounter();
     
     currentThirds.forEach(ct => {
-        const isSelected = selectedThirds.find(t => t.id === ct.team.id);
+        const isSelected = selectedThirds.find(t => t.id == ct.team.id);
         const card = document.createElement('div');
         card.className = `card third-team-card ${isSelected ? 'selected' : ''}`;
         card.innerHTML = `
@@ -584,7 +614,7 @@ function renderPhase2() {
 }
 
 function toggleThirdPlace(team) {
-    const idx = selectedThirds.findIndex(t => t.id === team.id);
+    const idx = selectedThirds.findIndex(t => t.id == team.id);
     if (idx >= 0) selectedThirds.splice(idx, 1);
     else if (selectedThirds.length < 8) selectedThirds.push(team);
     
@@ -614,7 +644,7 @@ function generateKnockouts() {
 
     if (!isBracketInitialized || !bracket.R32?.m73) {
         roundsInfo.forEach(r => {
-            if (!bracket[r.id]) bracket[r.id] = {};
+            if (!bracket[r.id] || Array.isArray(bracket[r.id])) bracket[r.id] = {};
             r.matches.forEach(m => {
                 if (!bracket[r.id][m]) bracket[r.id][m] = { t1: null, t2: null, winner: null };
             });
@@ -623,7 +653,7 @@ function generateKnockouts() {
     } else {
         // Ensure even if initialized, new rounds like TP/F are present
         roundsInfo.forEach(r => {
-            if (!bracket[r.id]) bracket[r.id] = {};
+            if (!bracket[r.id] || Array.isArray(bracket[r.id])) bracket[r.id] = {};
             r.matches.forEach(m => {
                 if (!bracket[r.id][m]) bracket[r.id][m] = { t1: null, t2: null, winner: null };
             });
@@ -643,7 +673,7 @@ function generateKnockouts() {
 
     Object.keys(base).forEach(mId => {
         const m = bracket.R32[mId];
-        if (m.winner && m.winner.id !== base[mId].t1?.id && m.winner.id !== base[mId].t2?.id) {
+        if (m.winner && m.winner.id != base[mId].t1?.id && m.winner.id != base[mId].t2?.id) {
             clearDownstream(mId, m.winner.id);
             m.winner = null;
         }
@@ -674,7 +704,7 @@ function renderKnockouts() {
             
             [m.t1, m.t2].forEach((team, idx) => {
                 const div = document.createElement('div');
-                div.className = `match-team ${!team ? 'empty' : (m.winner?.id === team.id ? 'active' : '')}`;
+                div.className = `match-team ${!team ? 'empty' : (m.winner && m.winner.id == team.id ? 'active' : '')}`;
                 div.innerHTML = team ? `<div class="radio-indicator"></div><img src="https://flagcdn.com/w40/${team.flag}.png" alt="${team.name}" class="team-flag-img"><span class="team-name">${team.name}</span>` : 'À DÉTERMINER';
                 if (team) div.onclick = () => setWinner(r.id, mId, idx + 1);
                 teamsDiv.appendChild(div);
@@ -709,7 +739,7 @@ function setWinner(round, mId, idx) {
     const lose = idx === 1 ? m.t2 : m.t1;
     if (!win) return;
     
-    if (m.winner && m.winner.id !== win.id) clearDownstream(mId, m.winner.id);
+    if (m.winner && m.winner.id != win.id) clearDownstream(mId, m.winner.id);
     m.winner = win;
     advance(mId, win, lose);
     renderKnockouts();
@@ -721,7 +751,7 @@ function advance(srcId, team, loser) {
     if (n) {
         const nm = bracket[n.round][n.id];
         nm[n.slot] = team;
-        if (nm.winner && nm.winner.id !== nm.t1?.id && nm.winner.id !== nm.t2?.id) {
+        if (nm.winner && nm.winner.id != nm.t1?.id && nm.winner.id != nm.t2?.id) {
             clearDownstream(n.id, nm.winner.id);
             nm.winner = null;
         }
@@ -732,7 +762,7 @@ function advance(srcId, team, loser) {
     if (ln && loser) {
         const nm = bracket[ln.round][ln.id];
         nm[ln.slot] = loser;
-        if (nm.winner && nm.winner.id !== nm.t1?.id && nm.winner.id !== nm.t2?.id) {
+        if (nm.winner && nm.winner.id != nm.t1?.id && nm.winner.id != nm.t2?.id) {
             clearDownstream(ln.id, nm.winner.id);
             nm.winner = null;
         }
@@ -743,9 +773,9 @@ function clearDownstream(srcId, oldId) {
     let curr = nextMatches[srcId];
     while (curr) {
         const m = bracket[curr.round][curr.id];
-        if (m.t1?.id === oldId) m.t1 = null;
-        if (m.t2?.id === oldId) m.t2 = null;
-        if (m.winner?.id === oldId) {
+        if (m.t1 && m.t1.id == oldId) m.t1 = null;
+        if (m.t2 && m.t2.id == oldId) m.t2 = null;
+        if (m.winner && m.winner.id == oldId) {
             m.winner = null;
             curr = nextMatches[curr.id];
         } else break;
@@ -922,6 +952,12 @@ async function loadScenarios() {
         const id = e.target.value;
         if (!id) return;
         
+        // PRE-FLIGHT SAFETY SAVE
+        if (currentPredictionId) {
+            clearTimeout(saveTimeout);
+            await performSave(false);
+        }
+
         localStorage.setItem('active_prediction_id', id);
 
         const toast = showToast("Chargement de la prédiction...", "saving");
@@ -931,8 +967,11 @@ async function loadScenarios() {
                 let state = await resp.json();
                 currentPredictionId = id;
                 
+                resetStateVariables(true);
+
                 // Fallback: If empty state or newly created guest session, seed defaults!
                 if (!state || Object.keys(state.groupsData || {}).length === 0) {
+                    resetStateVariables(false);
                     seedDefaultGroups();
                     state = { groupsData, groupsState, selectedThirds, bracket };
                     // Persist this newly seeded state in the database right away
@@ -974,8 +1013,21 @@ function loadStateData(state) {
     groupsData = state.groupsData || {};
     groupsState = state.groupsState || {};
     selectedThirds = state.selectedThirds || [];
-    bracket = state.bracket || { R32: {}, R16: {}, QF: {}, SF: {}, TP: {}, F: {} };
-    isBracketInitialized = !!state.bracket;
+    
+    // Fix PHP empty array to JS object serialization trap
+    const rawBracket = state.bracket || {};
+    bracket = { R32: {}, R16: {}, QF: {}, SF: {}, TP: {}, F: {} };
+    roundsInfo.forEach(r => {
+        if (rawBracket[r.id]) {
+            if (Array.isArray(rawBracket[r.id])) {
+                bracket[r.id] = {};
+            } else {
+                bracket[r.id] = rawBracket[r.id];
+            }
+        }
+    });
+    
+    isBracketInitialized = !!state.bracket && !!bracket.R32?.m73;
     
     // Check if empty (Phase 0)
     let totalAssigned = 0;
@@ -1007,6 +1059,12 @@ async function handleCreateNewPrediction() {
     const guestName = prompt("Entrez le nom du participant (Invité) :");
     if (!guestName) return; // cancelled or empty
 
+    // PRE-FLIGHT SAFETY SAVE
+    if (currentPredictionId) {
+        clearTimeout(saveTimeout);
+        await performSave(false);
+    }
+
     // Get Morocco local time
     const moroccoTime = new Date().toLocaleString("fr-FR", {
         timeZone: "Africa/Casablanca",
@@ -1029,6 +1087,9 @@ async function handleCreateNewPrediction() {
         const data = await res.json();
         currentPredictionId = data.id;
         localStorage.setItem('active_prediction_id', data.id);
+        
+        // Deep clean state but KEEP groupsData (custom allocations)
+        resetStateVariables(true);
         
         // Persist inherited state for this new ID in the DB
         await performSave(false);
